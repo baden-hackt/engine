@@ -13,7 +13,7 @@
 
 ---
 
-## TODO 1 — LOCKED
+## TODO 1 — DONE
 **Goal:** Create project structure and install dependencies
 **Tasks:**
 - Create `backend/` directory with empty files: `main.py`, `config.py`, `orders.py`, `csv_gen.py`, `mailer.py`, `api.py`, `requirements.txt`
@@ -27,7 +27,7 @@
 
 ---
 
-## TODO 2 — LOCKED
+## TODO 2 — DONE
 **Goal:** Implement `config.py`
 **Tasks:**
 - Call `load_dotenv("../.env")` at module level
@@ -41,7 +41,7 @@
 
 ---
 
-## TODO 3 — LOCKED
+## TODO 3 — DONE
 **Goal:** Implement `orders.py`
 **Tasks:**
 - Set `DB_PATH = "../shelf.db"`
@@ -58,7 +58,7 @@
 
 ---
 
-## TODO 4 — LOCKED
+## TODO 4 — DONE
 **Goal:** Implement `csv_gen.py`
 **Tasks:**
 - Set `CSV_DIR = "./orders_csv"`
@@ -73,7 +73,7 @@
 
 ---
 
-## TODO 5 — LOCKED
+## TODO 5 — DONE
 **Goal:** Implement `mailer.py`
 **Tasks:**
 - Import `RESEND_API_KEY` and `SENDER_EMAIL` from `config`
@@ -88,7 +88,7 @@
 
 ---
 
-## TODO 6 — LOCKED
+## TODO 6 — DONE
 **Goal:** Implement `api.py`
 **Tasks:**
 - Create FastAPI app with title `"Lagersystem API"`
@@ -106,7 +106,7 @@
 
 ---
 
-## TODO 7 — LOCKED
+## TODO 7 — DONE
 **Goal:** Implement `main.py`
 **Tasks:**
 - Import `uvicorn`, `threading`, `time`, `datetime`, and all functions from modules
