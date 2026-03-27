@@ -129,7 +129,7 @@
 
 ---
 
-## TODO 8 — LOCKED
+## TODO 8 — DONE
 **Goal:** Verify reorder flow end-to-end
 **Tasks:**
 - Ensure Person 1's pipeline has written fill level data to `../shelf.db` (or manually insert test data: `INSERT INTO fill_levels (tag_id, fill_level, timestamp) VALUES (0, 15, '2026-01-01T00:00:00');`)
@@ -144,7 +144,7 @@
 
 ---
 
-## TODO 9 — LOCKED
+## TODO 9 — DONE
 **Goal:** Verify dedup and mark-delivered logic
 **Tasks:**
 - With a pending order in the DB, insert a new fill level above the threshold: `INSERT INTO fill_levels (tag_id, fill_level, timestamp) VALUES (0, 80, '2026-01-01T01:00:00');`
@@ -158,7 +158,7 @@
 
 ---
 
-## TODO 10 — LOCKED
+## TODO 10 — DONE
 **Goal:** Verify API responses
 **Tasks:**
 - With the backend running and some data in the DB, test all 4 endpoints:
@@ -174,7 +174,7 @@
 
 ---
 
-## TODO 11 — LOCKED
+## TODO 11 — DONE
 **Goal:** Stability test
 **Tasks:**
 - Run `python main.py` for 10+ minutes
@@ -187,7 +187,7 @@
 
 ---
 
-## TODO 12 — LOCKED
+## TODO 12 — DONE
 **Goal:** Final handoff
 **Tasks:**
 - Verify `backend/` contains exactly 7 files: `main.py`, `config.py`, `orders.py`, `csv_gen.py`, `mailer.py`, `api.py`, `requirements.txt` (no `__pycache__`, no extras, no `products.json`)

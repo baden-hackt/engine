@@ -3,19 +3,55 @@ import threading
 from datetime import datetime
 import uvicorn
 
-from config import load_products
+from config import (
+	load_products,
+	SIMULATION_MODE,
+	SIMULATION_INTERVAL_SECONDS,
+	SIMULATION_LOW_FILL,
+	SIMULATION_HIGH_FILL,
+	SIMULATION_TAG_ID,
+)
 from orders import (
 	init_orders_table,
 	has_pending_order,
 	create_order,
 	mark_delivered,
 	get_latest_fill_levels,
+	insert_fill_level,
 )
 from csv_gen import generate_order_csv
 from mailer import send_order_email
 from api import app
 
 CHECK_INTERVAL = 10  # seconds
+
+
+def simulation_loop(products: dict) -> None:
+	"""
+	Generate synthetic fill-level data so reorder flow can be tested without camera input.
+	Pattern alternates low/high for one tag to exercise: order -> delivered -> order.
+	"""
+	print(
+		"Simulation mode enabled "
+		f"(tag={SIMULATION_TAG_ID}, low={SIMULATION_LOW_FILL}, high={SIMULATION_HIGH_FILL}, "
+		f"interval={SIMULATION_INTERVAL_SECONDS}s)."
+	)
+
+	if SIMULATION_TAG_ID not in products:
+		print(f"Simulation disabled: tag {SIMULATION_TAG_ID} not found in configured products.")
+		return
+
+	cycle = 0
+	while True:
+		try:
+			fill = SIMULATION_LOW_FILL if cycle % 2 == 0 else SIMULATION_HIGH_FILL
+			insert_fill_level(SIMULATION_TAG_ID, fill)
+			print(f"[SIM] inserted tag={SIMULATION_TAG_ID}, fill={fill}%")
+			cycle += 1
+			time.sleep(SIMULATION_INTERVAL_SECONDS)
+		except Exception as e:
+			print(f"ERROR in simulation loop: {e}")
+			time.sleep(SIMULATION_INTERVAL_SECONDS)
 
 
 def reorder_loop(products: dict) -> None:
@@ -81,6 +117,10 @@ def main():
 	products = load_products()
 
 	print(f"Loaded {len(products)} products from .env")
+
+	if SIMULATION_MODE:
+		sim_thread = threading.Thread(target=simulation_loop, args=(products,), daemon=True)
+		sim_thread.start()
 
 	reorder_thread = threading.Thread(target=reorder_loop, args=(products,), daemon=True)
 	reorder_thread.start()

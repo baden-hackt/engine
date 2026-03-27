@@ -8,6 +8,27 @@ RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "onboarding@resend.dev")
 
 
+def _as_bool(value: str | None, default: bool = False) -> bool:
+	if value is None:
+		return default
+	return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _as_int(value: str | None, default: int) -> int:
+	try:
+		return int(value) if value is not None else default
+	except ValueError:
+		return default
+
+
+# Simulation mode for deterministic end-to-end testing without camera input.
+SIMULATION_MODE = _as_bool(os.getenv("SIMULATION_MODE"), False)
+SIMULATION_INTERVAL_SECONDS = _as_int(os.getenv("SIMULATION_INTERVAL_SECONDS"), 10)
+SIMULATION_LOW_FILL = _as_int(os.getenv("SIMULATION_LOW_FILL"), 5)
+SIMULATION_HIGH_FILL = _as_int(os.getenv("SIMULATION_HIGH_FILL"), 95)
+SIMULATION_TAG_ID = _as_int(os.getenv("SIMULATION_TAG_ID"), 0)
+
+
 def load_products() -> dict:
 	"""
 	Load product configuration from environment variables.
