@@ -144,7 +144,7 @@
 
 ---
 
-## TODO 9 — LOCKED
+## TODO 9 — DONE
 **Goal:** Verify dedup and mark-delivered logic
 **Tasks:**
 - With a pending order in the DB, insert a new fill level above the threshold: `INSERT INTO fill_levels (tag_id, fill_level, timestamp) VALUES (0, 80, '2026-01-01T01:00:00');`
