@@ -125,4 +125,33 @@ def get_latest_fill_levels() -> list[dict]:
 		conn.close()
 
 
+def ensure_fill_levels_table() -> None:
+	"""Create fill_levels table if it does not exist."""
+	conn = sqlite3.connect(DB_PATH)
+	conn.execute(
+		"""
+		CREATE TABLE IF NOT EXISTS fill_levels (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			tag_id INTEGER NOT NULL,
+			fill_level INTEGER NOT NULL,
+			timestamp TEXT NOT NULL
+		)
+		"""
+	)
+	conn.commit()
+	conn.close()
+
+
+def insert_fill_level(tag_id: int, fill_level: int, timestamp: str | None = None) -> None:
+	"""Insert one fill-level sample. Used by simulation mode and manual tests."""
+	ensure_fill_levels_table()
+	conn = sqlite3.connect(DB_PATH)
+	conn.execute(
+		"INSERT INTO fill_levels (tag_id, fill_level, timestamp) VALUES (?, ?, ?)",
+		(tag_id, fill_level, timestamp or datetime.now().isoformat()),
+	)
+	conn.commit()
+	conn.close()
+
+
 init_orders_table()
