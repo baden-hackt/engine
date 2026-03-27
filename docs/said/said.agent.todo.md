@@ -82,7 +82,7 @@
 **Tasks:**
 - Import `sys`, `time`, `cv2`, `datetime`, and all functions from the 4 modules
 - Call `init_db()` and `init_camera()` on startup
-- Set `SCAN_INTERVAL = 5` and `FRAME_OUTPUT_PATH = "../latest_frame.jpg"`
+- Set `SCAN_INTERVAL = 1` and `FRAME_OUTPUT_PATH = "../latest_frame.jpg"`
 - Implement the main loop exactly as specified:
   1. Capture frame (exit if None)
   2. Change detection (skip if no change, except first frame)
@@ -91,7 +91,7 @@
   5. For each detection: draw green bounding box + `ID:X` label, crop slot, call API, write fill level to DB, draw `X%` on display frame
   6. Save display frame to `../latest_frame.jpg`
   7. Write scan log
-  8. Sleep 5 seconds
+  8. Sleep 1 second
 - `KeyboardInterrupt` → release camera, exit
 - All other exceptions → log, continue (never crash the loop)
 **Acceptance Criteria:**

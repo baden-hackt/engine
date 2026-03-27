@@ -15,7 +15,8 @@ def main():
     previous_frame = None
     previous_crops = {}
     last_fill_levels = {}
-    SCAN_INTERVAL = 5  # seconds
+    CROP_CHANGE_THRESHOLD = 0.003
+    SCAN_INTERVAL = 1  # seconds
     FRAME_OUTPUT_PATH = "../latest_frame.jpg"
 
     print("Pipeline started. Press Ctrl+C to stop.")
@@ -70,6 +71,18 @@ def main():
                     x1, y1, x2, y2 = bounds
                     cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
+                if tag_id in last_fill_levels:
+                    cv2.putText(display_frame, f"{last_fill_levels[tag_id]}%", (int(center[0]) - 20, int(center[1]) + 20),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
+            # Save annotated frame for dashboard immediately after detection
+            cv2.imwrite(FRAME_OUTPUT_PATH, display_frame)
+
+            # Process each tag
+            for detection in detections:
+                tag_id = detection.tag_id
+                center = detection.center
+
                 crop = crop_slot(frame, detection)
                 if crop is None:
                     print(f"  Tag {tag_id}: crop too small, skipping.")
@@ -77,7 +90,7 @@ def main():
 
                 crop_changed = True
                 if tag_id in previous_crops:
-                    crop_changed = has_changed(crop, previous_crops[tag_id])
+                    crop_changed = has_changed(crop, previous_crops[tag_id], threshold=CROP_CHANGE_THRESHOLD)
 
                 previous_crops[tag_id] = crop
 
@@ -98,7 +111,7 @@ def main():
                 cv2.putText(display_frame, f"{fill_level}%", (int(center[0]) - 20, int(center[1]) + 20),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
-            # Save annotated frame for dashboard
+            # Save annotated frame again with the latest fill values
             cv2.imwrite(FRAME_OUTPUT_PATH, display_frame)
 
             write_scan_log(tags_detected=len(detections), change_detected=True)
