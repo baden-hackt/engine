@@ -64,7 +64,7 @@
 
 ---
 
-## TODO 5 — ACTIVE
+## TODO 5 — DONE
 **Goal:** Implement `vision.py`
 **Tasks:**
 - Call `load_dotenv("../.env")` at module level
