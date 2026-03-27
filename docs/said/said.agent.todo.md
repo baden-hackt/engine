@@ -52,7 +52,7 @@
 
 ---
 
-## TODO 4 — LOCKED
+## TODO 4 — DONE
 **Goal:** Implement `tags.py`
 **Tasks:**
 - Create module-level detector: `Detector(families="tag36h11")`
@@ -64,7 +64,7 @@
 
 ---
 
-## TODO 5 — LOCKED
+## TODO 5 — ACTIVE
 **Goal:** Implement `vision.py`
 **Tasks:**
 - Call `load_dotenv("../.env")` at module level
