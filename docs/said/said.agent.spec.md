@@ -389,6 +389,9 @@ def main():
                 print("ERROR: Camera read failed after retries. Exiting.")
                 sys.exit(1)
 
+            # Rotate frame 180 degrees if camera is mounted upside down
+            frame = cv2.rotate(frame, cv2.ROTATE_180)
+
             # Change detection (skip on first frame)
             if previous_frame is not None:
                 if not has_changed(frame, previous_frame):
@@ -469,6 +472,7 @@ if __name__ == "__main__":
 - The only exception that exits is `KeyboardInterrupt`.
 - `previous_frame` is set to `frame` ONLY after a successful processing cycle (after tag detection), not after a skipped cycle.
 - `cap.release()` is called on exit.
+- The dashboard overlay should show both the green AprilTag bounds and the red projected compartment cuboid used to derive the GPT crop.
 
 ---
 

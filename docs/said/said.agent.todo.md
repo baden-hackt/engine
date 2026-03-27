@@ -77,7 +77,7 @@
 
 ---
 
-## TODO 6 — LOCKED
+## TODO 6 — ACTIVE
 **Goal:** Implement `main.py`
 **Tasks:**
 - Import `sys`, `time`, `cv2`, `datetime`, and all functions from the 4 modules
