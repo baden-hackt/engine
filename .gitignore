@@ -1,1 +1,5 @@
 .env
+shelf.db
+*.jpg
+orders_csv/
+pycache/
