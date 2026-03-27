@@ -105,18 +105,24 @@ def get_latest_fill_levels() -> list[dict]:
 	"""
 	conn = sqlite3.connect(DB_PATH)
 	conn.row_factory = sqlite3.Row
-	cursor = conn.execute(
-		"""
-		SELECT tag_id, fill_level, timestamp
-		FROM fill_levels
-		WHERE id IN (
-			SELECT MAX(id) FROM fill_levels GROUP BY tag_id
+	try:
+		cursor = conn.execute(
+			"""
+			SELECT tag_id, fill_level, timestamp
+			FROM fill_levels
+			WHERE id IN (
+				SELECT MAX(id) FROM fill_levels GROUP BY tag_id
+			)
+			"""
 		)
-		"""
-	)
-	rows = [dict(row) for row in cursor.fetchall()]
-	conn.close()
-	return rows
+		rows = [dict(row) for row in cursor.fetchall()]
+		return rows
+	except sqlite3.OperationalError as e:
+		if "no such table: fill_levels" in str(e):
+			return []
+		raise
+	finally:
+		conn.close()
 
 
 init_orders_table()

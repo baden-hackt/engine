@@ -129,7 +129,7 @@
 
 ---
 
-## TODO 8 — LOCKED
+## TODO 8 — DONE
 **Goal:** Verify reorder flow end-to-end
 **Tasks:**
 - Ensure Person 1's pipeline has written fill level data to `../shelf.db` (or manually insert test data: `INSERT INTO fill_levels (tag_id, fill_level, timestamp) VALUES (0, 15, '2026-01-01T00:00:00');`)

@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 import os
@@ -18,6 +18,14 @@ app.add_middleware(
 products = load_products()
 
 FRAME_PATH = "../latest_frame.jpg"
+
+
+@app.exception_handler(Exception)
+def api_unhandled_exception_handler(request: Request, exc: Exception):
+	return JSONResponse(
+		status_code=500,
+		content={"error": "internal_server_error", "detail": str(exc)},
+	)
 
 
 @app.get("/api/camera-feed")
@@ -55,33 +63,39 @@ def api_fill_levels():
 		...
 	]
 	"""
-	fill_levels = get_latest_fill_levels()
-	result = []
-	for fl in fill_levels:
-		tag_id = fl["tag_id"]
-		product = products.get(tag_id, {})
-		threshold = product.get("reorder_threshold", 20)
+	try:
+		fill_levels = get_latest_fill_levels()
+		result = []
+		for fl in fill_levels:
+			tag_id = fl["tag_id"]
+			product = products.get(tag_id, {})
+			threshold = product.get("reorder_threshold", 20)
 
-		if fl["fill_level"] <= 5:
-			status = "critical"
-		elif fl["fill_level"] <= threshold:
-			status = "low"
-		else:
-			status = "ok"
+			if fl["fill_level"] <= 5:
+				status = "critical"
+			elif fl["fill_level"] <= threshold:
+				status = "low"
+			else:
+				status = "ok"
 
-		result.append(
-			{
-				"tag_id": tag_id,
-				"fill_level": fl["fill_level"],
-				"timestamp": fl["timestamp"],
-				"product_id": product.get("product_id", "UNKNOWN"),
-				"product_name": product.get("product_name", "Unknown product"),
-				"supplier_name": product.get("supplier_name", "Unknown supplier"),
-				"reorder_threshold": threshold,
-				"status": status,
-			}
+			result.append(
+				{
+					"tag_id": tag_id,
+					"fill_level": fl["fill_level"],
+					"timestamp": fl["timestamp"],
+					"product_id": product.get("product_id", "UNKNOWN"),
+					"product_name": product.get("product_name", "Unknown product"),
+					"supplier_name": product.get("supplier_name", "Unknown supplier"),
+					"reorder_threshold": threshold,
+					"status": status,
+				}
+			)
+		return result
+	except Exception as e:
+		return JSONResponse(
+			status_code=500,
+			content={"error": "fill_levels_read_failed", "detail": str(e)},
 		)
-	return result
 
 
 @app.get("/api/orders")
