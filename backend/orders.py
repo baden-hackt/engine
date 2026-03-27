@@ -105,18 +105,53 @@ def get_latest_fill_levels() -> list[dict]:
 	"""
 	conn = sqlite3.connect(DB_PATH)
 	conn.row_factory = sqlite3.Row
-	cursor = conn.execute(
+	try:
+		cursor = conn.execute(
+			"""
+			SELECT tag_id, fill_level, timestamp
+			FROM fill_levels
+			WHERE id IN (
+				SELECT MAX(id) FROM fill_levels GROUP BY tag_id
+			)
+			"""
+		)
+		rows = [dict(row) for row in cursor.fetchall()]
+		return rows
+	except sqlite3.OperationalError as e:
+		if "no such table: fill_levels" in str(e):
+			return []
+		raise
+	finally:
+		conn.close()
+
+
+def ensure_fill_levels_table() -> None:
+	"""Create fill_levels table if it does not exist."""
+	conn = sqlite3.connect(DB_PATH)
+	conn.execute(
 		"""
-		SELECT tag_id, fill_level, timestamp
-		FROM fill_levels
-		WHERE id IN (
-			SELECT MAX(id) FROM fill_levels GROUP BY tag_id
+		CREATE TABLE IF NOT EXISTS fill_levels (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			tag_id INTEGER NOT NULL,
+			fill_level INTEGER NOT NULL,
+			timestamp TEXT NOT NULL
 		)
 		"""
 	)
-	rows = [dict(row) for row in cursor.fetchall()]
+	conn.commit()
 	conn.close()
-	return rows
+
+
+def insert_fill_level(tag_id: int, fill_level: int, timestamp: str | None = None) -> None:
+	"""Insert one fill-level sample. Used by simulation mode and manual tests."""
+	ensure_fill_levels_table()
+	conn = sqlite3.connect(DB_PATH)
+	conn.execute(
+		"INSERT INTO fill_levels (tag_id, fill_level, timestamp) VALUES (?, ?, ?)",
+		(tag_id, fill_level, timestamp or datetime.now().isoformat()),
+	)
+	conn.commit()
+	conn.close()
 
 
 init_orders_table()
