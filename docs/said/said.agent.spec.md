@@ -13,7 +13,7 @@ Build a Python application that:
 4. Sends each crop to the GPT-4o Vision API to estimate fill level (0–100%)
 5. Writes results to a shared SQLite database
 
-The application runs in a loop every 5 seconds. It runs on the same machine as the backend (Person 2). The only interface between this pipeline and the backend is the SQLite database file at `../shelf.db` (one level up, at the project root).
+The application runs in a loop every 1 second. It runs on the same machine as the backend (Person 2). The only interface between this pipeline and the backend is the SQLite database file at `../shelf.db` (one level up, at the project root).
 
 ---
 
@@ -402,7 +402,10 @@ def main():
     init_db()
     cap = init_camera()
     previous_frame = None
-    SCAN_INTERVAL = 5  # seconds
+    previous_crops = {}
+    last_fill_levels = {}
+    CROP_CHANGE_THRESHOLD = 0.003
+    SCAN_INTERVAL = 1  # seconds
     FRAME_OUTPUT_PATH = "../latest_frame.jpg"
 
     print("Pipeline started. Press Ctrl+C to stop.")
@@ -458,6 +461,18 @@ def main():
                     x1, y1, x2, y2 = bounds
                     cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
+                if tag_id in last_fill_levels:
+                    cv2.putText(display_frame, f"{last_fill_levels[tag_id]}%", (int(center[0]) - 20, int(center[1]) + 20),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
+            # Save annotated frame for dashboard immediately after detection
+            cv2.imwrite(FRAME_OUTPUT_PATH, display_frame)
+
+            # Process each tag
+            for detection in detections:
+                tag_id = detection.tag_id
+                center = detection.center
+
                 crop = crop_slot(frame, detection)
                 if crop is None:
                     print(f"  Tag {tag_id}: crop too small, skipping.")
@@ -466,7 +481,7 @@ def main():
                 # Per-tag crop change detection: only re-evaluate tags whose crop changed
                 crop_changed = True
                 if tag_id in previous_crops:
-                    crop_changed = has_changed(crop, previous_crops[tag_id])
+                    crop_changed = has_changed(crop, previous_crops[tag_id], threshold=CROP_CHANGE_THRESHOLD)
 
                 previous_crops[tag_id] = crop
 
@@ -487,7 +502,7 @@ def main():
                 cv2.putText(display_frame, f"{fill_level}%", (int(center[0]) - 20, int(center[1]) + 20),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
-            # Save annotated frame for dashboard
+            # Save annotated frame again with the latest fill values
             cv2.imwrite(FRAME_OUTPUT_PATH, display_frame)
 
             write_scan_log(tags_detected=len(detections), change_detected=True)
