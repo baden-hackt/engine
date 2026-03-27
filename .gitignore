@@ -3,4 +3,6 @@ shelf.db
 *.jpg
 orders_csv/
 pycache/
+pipeline/__pycache__/
 __pycache__/
+*.pyc
