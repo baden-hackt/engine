@@ -4,7 +4,7 @@ import cv2
 from datetime import datetime
 
 from camera import init_camera, capture_frame, has_changed
-from tags import detect_tags, crop_slot
+from tags import detect_tags, crop_slot, get_crop_bounds
 from vision import estimate_fill_level
 from db import init_db, write_fill_level, write_scan_log
 
@@ -13,6 +13,8 @@ def main():
     init_db()
     cap = init_camera()
     previous_frame = None
+    previous_crops = {}
+    last_fill_levels = {}
     SCAN_INTERVAL = 5  # seconds
     FRAME_OUTPUT_PATH = "../latest_frame.jpg"
 
@@ -63,18 +65,34 @@ def main():
                 cv2.putText(display_frame, f"ID:{tag_id}", (int(center[0]) - 20, int(center[1]) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
+                bounds = get_crop_bounds(frame, detection)
+                if bounds is not None:
+                    x1, y1, x2, y2 = bounds
+                    cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
                 crop = crop_slot(frame, detection)
                 if crop is None:
                     print(f"  Tag {tag_id}: crop too small, skipping.")
                     continue
 
-                fill_level = estimate_fill_level(crop)
-                if fill_level is None:
-                    print(f"  Tag {tag_id}: API call failed, skipping.")
-                    continue
+                crop_changed = True
+                if tag_id in previous_crops:
+                    crop_changed = has_changed(crop, previous_crops[tag_id])
 
-                write_fill_level(tag_id, fill_level)
-                print(f"  Tag {tag_id}: fill level = {fill_level}%")
+                previous_crops[tag_id] = crop
+
+                if crop_changed or tag_id not in last_fill_levels:
+                    fill_level = estimate_fill_level(crop)
+                    if fill_level is None:
+                        print(f"  Tag {tag_id}: API call failed, skipping.")
+                        continue
+
+                    last_fill_levels[tag_id] = fill_level
+                    write_fill_level(tag_id, fill_level)
+                    print(f"  Tag {tag_id}: fill level = {fill_level}%")
+                else:
+                    fill_level = last_fill_levels[tag_id]
+                    print(f"  Tag {tag_id}: unchanged, keeping {fill_level}%")
 
                 # Draw fill level on display frame
                 cv2.putText(display_frame, f"{fill_level}%", (int(center[0]) - 20, int(center[1]) + 20),

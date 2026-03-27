@@ -116,6 +116,19 @@ CREATE TABLE IF NOT EXISTS scan_log (
 );
 ```
 
+**Table `crop_settings`:**
+
+```sql
+CREATE TABLE IF NOT EXISTS crop_settings (
+    tag_id INTEGER PRIMARY KEY,
+    crop_width INTEGER NOT NULL,
+    crop_height INTEGER NOT NULL,
+    offset_x INTEGER NOT NULL,
+    offset_y INTEGER NOT NULL,
+    updated_at TEXT NOT NULL
+);
+```
+
 ### Functions to implement
 
 ```python
@@ -127,9 +140,20 @@ def write_fill_level(tag_id: int, fill_level: int) -> None:
 
 def write_scan_log(tags_detected: int, change_detected: bool) -> None:
     """Insert one row into scan_log. change_detected stored as 1 or 0."""
+
+def get_crop_settings(tag_id: int) -> tuple[int, int, int, int]:
+    """Return crop_width, crop_height, offset_x, offset_y for this tag, or defaults."""
+
+def upsert_crop_settings(tag_id: int, crop_width: int, crop_height: int, offset_x: int, offset_y: int) -> None:
+    """Insert or update the crop settings row for one tag."""
 ```
 
 Use a new `sqlite3.connect('../shelf.db')` connection per function call. Do not keep a persistent connection. Close the connection after each call.
+Seed `crop_settings` for tag IDs `0` and `1` on startup with these defaults if rows do not exist:
+- `crop_width = 336`
+- `crop_height = 448`
+- `offset_x = 0`
+- `offset_y = 0`
 
 ---
 
@@ -232,11 +256,10 @@ def crop_slot(frame: np.ndarray, detection) -> np.ndarray | None:
     of the shelf slot above the tag.
 
     Crop definition:
-    - Compute tag_width as the distance between corner[0] and corner[1]
-    - crop_width = tag_width * 3
-    - crop_height = tag_width * 4
-    - Center the crop horizontally on the tag center
-    - The crop extends upward from the top edge of the tag
+    - Read crop_width, crop_height, offset_x, offset_y from crop_settings for this tag
+    - Center the crop horizontally on the tag center plus offset_x
+    - Anchor the crop vertically to the top edge of the tag plus offset_y
+    - crop_width and crop_height are fixed pixel values so they can be tuned from the dashboard or API
 
     Clamp all coordinates to frame boundaries.
     If the resulting crop is smaller than 50x50 pixels, return None.
@@ -246,18 +269,14 @@ def crop_slot(frame: np.ndarray, detection) -> np.ndarray | None:
 Implementation:
 ```python
 def crop_slot(frame: np.ndarray, detection) -> np.ndarray | None:
-    corners = detection.corners
-    tag_width = int(np.linalg.norm(corners[1] - corners[0]))
-    tag_center_x = int(detection.center[0])
-    tag_top_y = int(min(c[1] for c in corners))
-
-    crop_w = tag_width * 3
-    crop_h = tag_width * 4
+    crop_w, crop_h, offset_x, offset_y = get_crop_settings(detection.tag_id)
+    tag_center_x = int(detection.center[0]) + offset_x
+    tag_top_y = int(min(c[1] for c in detection.corners)) + offset_y
 
     x1 = max(0, tag_center_x - crop_w // 2)
     x2 = min(frame.shape[1], tag_center_x + crop_w // 2)
     y1 = max(0, tag_top_y - crop_h)
-    y2 = tag_top_y
+    y2 = min(frame.shape[0], tag_top_y)
 
     crop = frame[y1:y2, x1:x2]
 
@@ -266,6 +285,12 @@ def crop_slot(frame: np.ndarray, detection) -> np.ndarray | None:
 
     return crop
 ```
+
+Use the same rectangle bounds for both:
+- the actual crop sent to GPT-4o
+- the red overlay rectangle shown in debug and dashboard images
+
+The rectangle math should live in one shared helper so the visualization always matches the real crop.
 
 ---
 
@@ -428,18 +453,35 @@ def main():
                 cv2.putText(display_frame, f"ID:{tag_id}", (int(center[0]) - 20, int(center[1]) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
+                bounds = get_crop_bounds(frame, detection)
+                if bounds is not None:
+                    x1, y1, x2, y2 = bounds
+                    cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
                 crop = crop_slot(frame, detection)
                 if crop is None:
                     print(f"  Tag {tag_id}: crop too small, skipping.")
                     continue
 
-                fill_level = estimate_fill_level(crop)
-                if fill_level is None:
-                    print(f"  Tag {tag_id}: API call failed, skipping.")
-                    continue
+                # Per-tag crop change detection: only re-evaluate tags whose crop changed
+                crop_changed = True
+                if tag_id in previous_crops:
+                    crop_changed = has_changed(crop, previous_crops[tag_id])
 
-                write_fill_level(tag_id, fill_level)
-                print(f"  Tag {tag_id}: fill level = {fill_level}%")
+                previous_crops[tag_id] = crop
+
+                if crop_changed or tag_id not in last_fill_levels:
+                    fill_level = estimate_fill_level(crop)
+                    if fill_level is None:
+                        print(f"  Tag {tag_id}: API call failed, skipping.")
+                        continue
+
+                    last_fill_levels[tag_id] = fill_level
+                    write_fill_level(tag_id, fill_level)
+                    print(f"  Tag {tag_id}: fill level = {fill_level}%")
+                else:
+                    fill_level = last_fill_levels[tag_id]
+                    print(f"  Tag {tag_id}: unchanged, keeping {fill_level}%")
 
                 # Draw fill level on display frame
                 cv2.putText(display_frame, f"{fill_level}%", (int(center[0]) - 20, int(center[1]) + 20),
@@ -472,7 +514,7 @@ if __name__ == "__main__":
 - The only exception that exits is `KeyboardInterrupt`.
 - `previous_frame` is set to `frame` ONLY after a successful processing cycle (after tag detection), not after a skipped cycle.
 - `cap.release()` is called on exit.
-- The dashboard overlay should show both the green AprilTag bounds and the red projected compartment cuboid used to derive the GPT crop.
+- The dashboard overlay should show both the green AprilTag bounds and the red crop rectangle actually sent to GPT.
 
 ---
 
@@ -529,8 +571,7 @@ Make sure `../.env` exists with `OPENAI_API_KEY` set before running.
 
 Person 2 (backend/reorder logic) reads from the same `../shelf.db` file. The contract:
 
-- Person 1 (this pipeline) ONLY writes to `fill_levels` and `scan_log`.
-- Person 1 NEVER reads from any table that Person 2 creates.
+- Person 1 (this pipeline) writes to `fill_levels` and `scan_log`.
 - Person 1 NEVER deletes or updates rows. Insert only.
 - Person 2 reads the latest `fill_level` per `tag_id` using:
 
@@ -543,6 +584,12 @@ WHERE id IN (
 ```
 
 Person 1 does not need to know or care about this query. Just keep inserting rows.
+
+## CROP SETTINGS CONTRACT WITH PERSON 2
+
+The detailed crop-settings/backend contract lives in:
+
+`docs/said/crop_settings.contract.md`
 
 ---
 

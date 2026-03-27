@@ -2,6 +2,8 @@ from pupil_apriltags import Detector
 import cv2
 import numpy as np
 
+from db import get_crop_settings
+
 
 detector = Detector(families="tag36h11")
 
@@ -14,6 +16,22 @@ def detect_tags(frame: np.ndarray) -> list:
     """
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     return detector.detect(gray)
+
+
+def get_crop_bounds(frame: np.ndarray, detection) -> tuple[int, int, int, int] | None:
+    crop_w, crop_h, offset_x, offset_y = get_crop_settings(detection.tag_id)
+    tag_center_x = int(detection.center[0]) + offset_x
+    tag_top_y = int(min(c[1] for c in detection.corners)) + offset_y
+
+    x1 = max(0, tag_center_x - crop_w // 2)
+    x2 = min(frame.shape[1], tag_center_x + crop_w // 2)
+    y1 = max(0, tag_top_y - crop_h)
+    y2 = min(frame.shape[0], tag_top_y)
+
+    if (y2 - y1) < 50 or (x2 - x1) < 50:
+        return None
+
+    return x1, y1, x2, y2
 
 
 def crop_slot(frame: np.ndarray, detection) -> np.ndarray | None:
@@ -31,22 +49,9 @@ def crop_slot(frame: np.ndarray, detection) -> np.ndarray | None:
     Clamp all coordinates to frame boundaries.
     If the resulting crop is smaller than 50x50 pixels, return None.
     """
-    corners = detection.corners
-    tag_width = int(np.linalg.norm(corners[1] - corners[0]))
-    tag_center_x = int(detection.center[0])
-    tag_top_y = int(min(c[1] for c in corners))
-
-    crop_w = tag_width * 3
-    crop_h = tag_width * 4
-
-    x1 = max(0, tag_center_x - crop_w // 2)
-    x2 = min(frame.shape[1], tag_center_x + crop_w // 2)
-    y1 = max(0, tag_top_y - crop_h)
-    y2 = tag_top_y
-
-    crop = frame[y1:y2, x1:x2]
-
-    if crop.shape[0] < 50 or crop.shape[1] < 50:
+    bounds = get_crop_bounds(frame, detection)
+    if bounds is None:
         return None
 
-    return crop
+    x1, y1, x2, y2 = bounds
+    return frame[y1:y2, x1:x2]

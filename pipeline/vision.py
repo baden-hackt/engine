@@ -36,7 +36,7 @@ def estimate_fill_level(crop: np.ndarray) -> int | None:
                         },
                         {
                             "type": "text",
-                            "text": "Look at this shelf compartment. Estimate how full it is as a percentage from 0 to 100, where 0 is completely empty and 100 is completely full. Respond with ONLY a single integer number, nothing else."
+                            "text": "This is a photo of a shelf compartment. It holds a maximum of 6 cans at full capacity. Count how many cans you see in the image. Calculate the fill percentage as (count / 6) * 100. If there are more than 6 cans, return 100. If the shelf is empty, return 0. Respond with ONLY a single integer number, nothing else."
                         }
                     ]
                 }
