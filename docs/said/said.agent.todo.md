@@ -27,7 +27,7 @@
 
 ---
 
-## TODO 2 — LOCKED
+## TODO 2 — DONE
 **Goal:** Implement `db.py`
 **Tasks:**
 - Set `DB_PATH = "../shelf.db"`
@@ -41,7 +41,7 @@
 
 ---
 
-## TODO 3 — LOCKED
+## TODO 3 — DONE
 **Goal:** Implement `camera.py`
 **Tasks:**
 - Implement `init_camera()` — opens webcam index 0, sets 1280x720, calls `sys.exit(1)` if camera fails
