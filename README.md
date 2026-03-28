@@ -1,4 +1,4 @@
-# STOCKR Engine - Vollständiges Repository README
+# STOCKR Engine - Vollständige Dokumentation
 
 ## 1) Projektüberblick
 Dieses Repository enthält den Engine-Teil des STOCKR-Systems. Es gibt zwei Python-Services, die zusammenarbeiten:
