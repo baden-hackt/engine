@@ -62,6 +62,7 @@ def reorder_loop(products: dict) -> None:
 
 	while True:
 		try:
+			products = load_products()
 			fill_levels = get_latest_fill_levels()
 
 			if len(fill_levels) == 0:

@@ -1,8 +1,9 @@
 import sqlite3
+import os
 from datetime import datetime
 
 
-DB_PATH = "../shelf.db"
+DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "shelf.db"))
 DEFAULT_CROP_WIDTH = 336
 DEFAULT_CROP_HEIGHT = 448
 DEFAULT_OFFSET_X = 0

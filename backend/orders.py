@@ -1,7 +1,8 @@
 import sqlite3
+import os
 from datetime import datetime
 
-DB_PATH = "../shelf.db"
+DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "shelf.db"))
 
 
 def init_orders_table() -> None:
