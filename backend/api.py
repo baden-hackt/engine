@@ -1,10 +1,19 @@
-from fastapi import FastAPI, Request
+from typing import Any
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
 import os
 
 from orders import get_all_orders, get_latest_fill_levels
-from config import load_products
+from config import (
+	PRODUCT_ENV_SUFFIXES,
+	get_all_product_env,
+	get_product_env,
+	load_products,
+	update_product_env,
+)
 
 app = FastAPI(title="Lagersystem API")
 
@@ -15,9 +24,11 @@ app.add_middleware(
 	allow_headers=["*"],
 )
 
-products = load_products()
-
 FRAME_PATH = "../latest_frame.jpg"
+
+
+class ProductEnvUpdateRequest(BaseModel):
+	values: dict[str, Any] = Field(default_factory=dict)
 
 
 @app.exception_handler(Exception)
@@ -64,6 +75,7 @@ def api_fill_levels():
 	]
 	"""
 	try:
+		products = load_products()
 		fill_levels = get_latest_fill_levels()
 		result = []
 		for fl in fill_levels:
@@ -128,4 +140,88 @@ def api_products():
 	"""
 	Return all product master data.
 	"""
-	return list(products.values())
+	return list(load_products().values())
+
+
+@app.get("/api/product-env")
+def api_product_env_all():
+	"""
+	Return raw PRODUCT_0_* and PRODUCT_1_* values from ../.env.
+	Useful for dashboard config forms.
+	"""
+	data = []
+	for tag_id in (0, 1):
+		data.append(
+			{
+				"tag_id": tag_id,
+				"values": get_product_env(tag_id),
+				"product": load_products().get(tag_id, {}),
+			}
+		)
+	return data
+
+
+@app.get("/api/product-env/{tag_id}")
+def api_product_env_one(tag_id: int):
+	"""Return all editable PRODUCT_{tag_id}_* values for one product."""
+	if tag_id not in (0, 1):
+		raise HTTPException(status_code=400, detail="tag_id must be 0 or 1")
+
+	return {
+		"tag_id": tag_id,
+		"values": get_product_env(tag_id),
+		"allowed_fields": sorted(PRODUCT_ENV_SUFFIXES),
+		"product": load_products().get(tag_id, {}),
+	}
+
+
+@app.put("/api/product-env/{tag_id}")
+def api_update_product_env(tag_id: int, payload: ProductEnvUpdateRequest):
+	"""
+	Update any subset of PRODUCT_{tag_id}_* variables.
+	Input keys must be suffixes only (e.g. NAME, THRESHOLD, REORDER_QTY).
+	"""
+	if tag_id not in (0, 1):
+		raise HTTPException(status_code=400, detail="tag_id must be 0 or 1")
+
+	try:
+		updated_values = update_product_env(tag_id, payload.values)
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e)) from None
+
+	return {
+		"tag_id": tag_id,
+		"values": updated_values,
+		"product": load_products().get(tag_id, {}),
+	}
+
+
+@app.put("/api/product-env")
+def api_update_multiple_product_env(payload: dict[str, dict[str, Any]]):
+	"""
+	Bulk update endpoint.
+	Payload shape:
+	{
+	  "0": {"NAME": "...", "THRESHOLD": 30},
+	  "1": {"SUPPLIER_EMAIL": "..."}
+	}
+	"""
+	updated: dict[str, dict[str, str]] = {}
+	for key, values in payload.items():
+		try:
+			tag_id = int(key)
+		except ValueError:
+			raise HTTPException(status_code=400, detail=f"Invalid tag_id key: {key}") from None
+
+		if tag_id not in (0, 1):
+			raise HTTPException(status_code=400, detail=f"tag_id must be 0 or 1, got {tag_id}")
+
+		if not isinstance(values, dict):
+			raise HTTPException(status_code=400, detail=f"Values for tag {tag_id} must be an object")
+
+		try:
+			updated[str(tag_id)] = update_product_env(tag_id, values)
+		except ValueError as e:
+			raise HTTPException(status_code=400, detail=str(e)) from None
+
+	return {"updated": updated, "products": list(load_products().values())}
